@@ -300,202 +300,165 @@ El modelo de Naive Bayes funciona bien para clasificar casas Económicas y Caras
 
 ### 2. Analice los resultados del modelo de regresión usando bayes ingenuo. ¿Qué tan bien le fue prediciendo? Utilice las métricas correctas.
 
+**Análisis del Modelo de Regresión Usando Naive Bayes**
 
+Para evaluar el modelo de regresión, revisamos las siguientes métricas obtenidas en el inciso 1:
+
+- Error cuadrático medio (MSE): 0.05044311
+
+- Raíz del error cuadrático medio (RMSE): 0.2245954
+
+- Error estimado en dólares: 1.251816
+
+Estas métricas nos permiten evaluar la calidad de la predicción de SalePrice en su escala logarítmica.
+
+**2.1. Interpretación de las Métricas**
+
+1. El MSE (0.05044311) mide el error promedio al cuadrado. Un valor más bajo indica que el modelo está haciendo predicciones más cercanas a los valores reales.
+
+2. El RMSE (0.2246) es la raíz cuadrada del MSE y nos da una idea del error promedio en las mismas unidades que la variable objetivo. Como estamos trabajando con log(SalePrice), esta desviación puede ser interpretada como un error de aproximadamente ±0.22 en la escala logarítmica.
+
+3. El error estimado en dólares ($1.25 dólares aprox.) se obtiene al quitar la transformación logarítmica, lo que nos da una idea del margen de error del modelo en términos del precio real de las casas.
+
+**2.2. Análisis de la Gráfica de Dispersión**
+
+En la gráfica de predicción del modelo Naive Bayes vs valores reales, observamos que los puntos se alinean bien con la línea de referencia (línea roja punteada). Sin embargo:
+
+- Se pueden notar algunas desviaciones en valores bajos y altos de SalePrice, lo cual es esperable dado que Naive Bayes no es un modelo óptimo para regresión debido a su suposición de independencia condicional.
+
+- Hay casos donde el modelo sobreestima o subestima el precio de las casas, aunque en general sigue la tendencia correcta.
+
+**2.3. Limitaciones del Modelo**
+
+- Naive Bayes no es un modelo diseñado para regresión, ya que su base probabilística lo hace más adecuado para clasificación.
+
+- La suposición de independencia condicional entre las variables predictoras puede hacer que no capture bien relaciones complejas en los datos.
+
+- El error de 1.25 dólares en promedio es bajo, pero para precios de casas más altos esto podría ser significativo.
+
+**2.4. Conclusión**
+
+1. El modelo Naive Bayes para regresión logra capturar la tendencia general de SalePrice, aunque con ciertas desviaciones.
+
+2. El RMSE de 0.2246 y el error estimado en dólares de $1.25 indican que el modelo tiene un desempeño aceptable, aunque no óptimo.
+
+3. El modelo muestra una buena alineación con la línea de referencia en la gráfica de dispersión, pero algunas predicciones presentan variaciones, especialmente en valores extremos.
+
+4. Dado que Naive Bayes asume independencia condicional entre las variables predictoras, su capacidad para modelar relaciones complejas es limitada.
+
+5. En términos prácticos, el modelo puede ser útil para obtener una estimación general del precio de las casas, pero probablemente no sea la mejor opción en comparación con otros métodos más avanzados como la regresión lineal o los árboles de decisión.
 
 ### 3. Compare los resultados con el modelo de regresión lineal y el árbol de regresión que hizo en las entregas pasadas. ¿Cuál funcionó mejor? 
 
+**Comparación de Modelos de Regresión: Naive Bayes vs. Regresión Lineal vs. Árbol de Decisión**
 
+Para determinar cuál modelo funcionó mejor en la predicción del precio de las casas, analizamos las métricas obtenidas en cada caso, incluyendo el Error Cuadrático Medio (MSE) y la capacidad de generalización en el conjunto de prueba.
+
+**3.1. Modelo de Regresión Naive Bayes**
+
+Error Cuadrático Medio (MSE): 0.05044311
+
+Raíz del Error Cuadrático Medio (RMSE): 0.2245954
+
+Error estimado en dólares: 1.251816
+
+**3.2. Resultados Numéricos de los Modelos Evaluados**
+
+|            **Modelo**             |**MSE en Entrenamiento**|**MSE en Prueba**     |**Raíz del MSE (RMSE)**|**Error Estimado en Dólares**|
+|-----------------------------------|------------------------|----------------------|-----------------------|-----------------------------|
+|**Regresión Lineal (Ridge)**       |       8.74 × 10^8      |      1.02 × 10^9     |        31,953.1       |          1,678.64           |
+|**IÁrbol de Decisión (MaxDepth=5)**|       1.29 × 10^9      |      1.65 × 10^9     |        40,623.5       |          2,135.46           |
+|   **Naive Bayes (Regresión)**     |           ---          | 0.05 (log SalePrice) | 0.224 (log SalePrice) |           1,251.81          |
+
+**3.3. Análisis Comparativo**
+
+**3.3.1. Precisión y Generalización de los Modelos**
+
+- **Regresión Lineal (Ridge)** tiene el MSE más bajo en prueba, lo que indica que logra hacer predicciones más precisas y con menor error en datos nuevos.
+
+- **Árbol de Decisión** presenta un MSE mucho mayor en la prueba que en el entrenamiento, lo que indica sobreajuste. El modelo aprende demasiado bien los datos de entrenamiento, pero pierde precisión al predecir datos nuevos.
+
+- **Naive Bayes** (Regresión) tiene un error más bajo en términos de escala logarítmica, pero hay que considerar que esta métrica no es directamente comparable con Ridge y Árbol de Decisión sin deshacer la transformación logarítmica.
+
+**3.3.2. Robustez del Modelo**
+
+- **Regresión Lineal (Ridge)** es más estable, ya que usa regularización para evitar sobreajuste y proporciona predicciones consistentes.
+
+- **Árbol de Decisión** es más susceptible al ruido en los datos, ya que puede generar reglas demasiado específicas en el conjunto de entrenamiento, afectando su capacidad de generalización.
+
+- **Naive Bayes (Regresión)** funciona bien con datos de alta dimensionalidad, pero su supuesto de independencia de variables puede limitar su precisión en problemas más complejos.
+
+**3.3.3. Interpretabilidad**
+
+- **Árbol de Decisión** es el más interpretable, ya que permite visualizar cómo se toman las decisiones de predicción basadas en divisiones de variables.
+
+- **Regresión Lineal** es menos interpretable pero más precisa, ya que los coeficientes de las variables explican cómo afectan el precio.
+
+- **Naive Bayes** no es directamente interpretable en términos de predicción continua, ya que trabaja mejor en problemas de clasificación.
+
+**3.4. Comparación de la Clasificación (Categorías: Económica, Intermedia, Cara)**
+
+Además de la predicción numérica del precio, evaluamos el desempeño en la clasificación de casas en Económicas, Intermedias y Caras.
+
+|            **Modelo**             |**Accuracy**|**F1 Económica**|**F1 Intermedia**|**F1 Cara**|
+|-----------------------------------|------------|----------------|-----------------|-----------|
+|**Árbol de Decisión**              |   0.7698   |     0.7982     |      0.6477     |  0.8524   |
+|**Naive Bayes (Clasificación)**    |   0.7698   |     0.8165     |      0.7071     |  0.8852   |
+
+**3.5. Análisis**
+
+- Naive Bayes tiene una mejor precisión global (80.41%) en comparación con el Árbol de Decisión (76.98%).
+
+- F1-Score es mejor en todas las categorías para Naive Bayes, indicando que clasifica mejor las casas en sus categorías de precio.
+
+- El Árbol de Decisión tiene más errores en la categoría "Intermedia", con un F1-Score de 0.6477, mientras que Naive Bayes logra 0.7071.
+
+**3.6. Conclusión: ¿Cuál Modelo Funcionó Mejor?**
+
+**3.6.1. Mejor Modelo para Predicción de Precio Numérico**
+
+✔ Regresión Lineal (Ridge) es el mejor modelo para predecir el precio exacto de una casa.
+
+- Tiene el menor MSE y RMSE, lo que indica mayor precisión.
+
+- Es más estable y no sufre de sobreajuste como el Árbol de Decisión.
+
+**3.6.2. Mejor Modelo para Clasificación**
+
+✔ Naive Bayes es el mejor modelo para clasificar casas en Económicas, Intermedias y Caras.
+
+- Tiene mayor precisión y F1-Score en todas las clases.
+
+- Maneja mejor la variabilidad de los datos.
+
+**3.6.3. Árbol de Decisión: ¿Útil o No?**
+✔ Árbol de Decisión sigue siendo útil para entender qué variables afectan el precio, pero no es la mejor opción para predecir.
+
+- Puede ser una buena herramienta exploratoria para identificar patrones en los datos.
+
+- Sin embargo, tiene problemas de sobreajuste y menor precisión en predicciones.
+
+**3.6.4. Consideraciones Finales**
+
+Si el objetivo es hacer predicciones precisas del precio de una casa, la Regresión Lineal (Ridge) es la mejor opción.
+
+Si el objetivo es clasificar casas en categorías de precio, Naive Bayes supera al Árbol de Decisión en precisión.
+
+El Árbol de Decisión sigue siendo útil para interpretar los datos, pero su precisión es inferior en ambas tareas.
 
 ### 4. Haga un modelo de clasificación, use la variable categórica que hizo con el precio de las casas (barata, media y cara) como variable respuesta. 
 
 ```{r}
-# Cargar librerías necesarias
-library(e1071)  # Naive Bayes
-library(caret)  # Evaluación del modelo
-library(dplyr)  # Manipulación de datos
-library(ggplot2) # Visualización
 
-# 1. Cargar conjuntos de datos asegurando que sean los mismos que en entregas anteriores
-train_set <- read.csv("train_set.csv", stringsAsFactors = TRUE)
-test_set <- read.csv("test_set.csv", stringsAsFactors = TRUE)
-
-# 2. Eliminar la columna Id si existe
-if ("Id" %in% colnames(train_set)) {
-  train_set <- train_set %>% select(-Id)
-}
-if ("Id" %in% colnames(test_set)) {
-  test_set <- test_set %>% select(-Id)
-}
-
-# 3. Verificar que SalePrice está presente
-if (!"SalePrice" %in% colnames(train_set)) {
-  stop("Error: La variable 'SalePrice' no está en el dataset de entrenamiento.")
-}
-if (!"SalePrice" %in% colnames(test_set)) {
-  stop("Error: La variable 'SalePrice' no está en el dataset de prueba.")
-}
-
-# 4. Manejar valores faltantes en SalePrice
-train_set <- train_set %>% filter(!is.na(SalePrice))
-test_set <- test_set %>% filter(!is.na(SalePrice))
-
-# 5. Convertir SalePrice en una variable categórica basada en percentiles
-quantiles <- quantile(train_set$SalePrice, probs = c(0.33, 0.66), na.rm = TRUE)
-
-train_set$Categoria <- cut(train_set$SalePrice,
-                           breaks = c(-Inf, quantiles[1], quantiles[2], Inf),
-                           labels = c("Económica", "Intermedia", "Cara"))
-
-test_set$Categoria <- cut(test_set$SalePrice,
-                          breaks = c(-Inf, quantiles[1], quantiles[2], Inf),
-                          labels = c("Económica", "Intermedia", "Cara"))
-
-# Convertir `Categoria` a factor
-train_set$Categoria <- as.factor(train_set$Categoria)
-test_set$Categoria <- as.factor(test_set$Categoria)
-
-# 6. Eliminar SalePrice para que no sea usado en la predicción
-train_set <- train_set %>% select(-SalePrice)
-test_set <- test_set %>% select(-SalePrice)
-
-# 7. Asegurar que las variables categóricas tengan los mismos niveles en train y test
-categorical_vars <- names(train_set)[sapply(train_set, is.factor)]
-
-for (var in categorical_vars) {
-  test_set[[var]] <- factor(test_set[[var]], levels = levels(train_set[[var]]))
-}
-
-# 8. Entrenar el modelo de Naive Bayes para clasificación
-set.seed(42)
-modelo_nb_class <- naiveBayes(Categoria ~ ., data = train_set)
-
-# 9. Predicción en el conjunto de prueba
-predicciones_class <- predict(modelo_nb_class, newdata = test_set)
-
-# 10. Evaluación del modelo: Matriz de confusión y F1-Score
-conf_matrix <- confusionMatrix(predicciones_class, test_set$Categoria)
-print(conf_matrix)
-
-# Calcular F1-Score por clase
-f1_scores <- conf_matrix$byClass[, "F1"]
-cat("F1-Score para cada categoría:\n")
-print(f1_scores)
-
-# 11. Gráfico de comparación de predicciones vs valores reales (Clasificación)
-ggplot(data.frame(Real = test_set$Categoria, Predicho = predicciones_class), aes(x = Real, fill = Predicho)) +
-  geom_bar(position = "dodge", color = "black", alpha = 0.8) +
-  labs(title = "Comparación de Predicciones del Modelo Naive Bayes",
-       x = "Categoría Real",
-       y = "Cantidad de Casas") +
-  theme_minimal() +
-  theme(legend.position = "top", legend.title = element_blank()) +
-  scale_fill_manual(values = c("Económica" = "#E74C3C", "Intermedia" = "#27AE60", "Cara" = "#3498DB"))
 ```
+
+
 ### 5. Utilice los modelos con el conjunto de prueba y determine la eficiencia del algoritmo para predecir y clasificar. 
 
 ```{r}
-# Cargar librerías necesarias
-library(e1071)  # Para Naive Bayes
-library(caret)  # Para evaluación del modelo
-library(dplyr)  # Para manipulación de datos
-library(ggplot2) # Para visualización
 
-# 1. Cargar conjuntos de datos asegurando que sean los mismos que en entregas anteriores
-train_set <- read.csv("train_set.csv", stringsAsFactors = TRUE)
-test_set <- read.csv("test_set.csv", stringsAsFactors = TRUE)
-
-# 2. Eliminar la columna Id si existe
-if ("Id" %in% colnames(train_set)) {
-  train_set <- train_set %>% select(-Id)
-}
-if ("Id" %in% colnames(test_set)) {
-  test_set <- test_set %>% select(-Id)
-}
-
-# 3. Verificar que SalePrice está presente
-if (!"SalePrice" %in% colnames(train_set)) {
-  stop("Error: La variable 'SalePrice' no está en el dataset de entrenamiento.")
-}
-if (!"SalePrice" %in% colnames(test_set)) {
-  stop("Error: La variable 'SalePrice' no está en el dataset de prueba.")
-}
-
-# 4. Manejar valores faltantes en SalePrice
-train_set <- train_set %>% filter(!is.na(SalePrice))
-test_set <- test_set %>% filter(!is.na(SalePrice))
-
-# 5. Aplicar transformación logarítmica a SalePrice para mejorar distribución
-train_set$LogSalePrice <- log(train_set$SalePrice)
-test_set$LogSalePrice <- log(test_set$SalePrice)
-
-# 6. Convertir SalePrice en una variable categórica para clasificación
-quantiles <- quantile(train_set$SalePrice, probs = c(0.33, 0.66), na.rm = TRUE)
-
-train_set$Categoria <- cut(train_set$SalePrice,
-                           breaks = c(-Inf, quantiles[1], quantiles[2], Inf),
-                           labels = c("Económica", "Intermedia", "Cara"))
-
-test_set$Categoria <- cut(test_set$SalePrice,
-                          breaks = c(-Inf, quantiles[1], quantiles[2], Inf),
-                          labels = c("Económica", "Intermedia", "Cara"))
-
-# Convertir `Categoria` a factor
-train_set$Categoria <- as.factor(train_set$Categoria)
-test_set$Categoria <- as.factor(test_set$Categoria)
-
-# 7. Asegurar que las variables categóricas tengan los mismos niveles en train y test
-categorical_vars <- names(train_set)[sapply(train_set, is.factor)]
-
-for (var in categorical_vars) {
-  test_set[[var]] <- factor(test_set[[var]], levels = levels(train_set[[var]]))
-}
-
-# 8. MODELO DE NAIVE BAYES PARA REGRESIÓN (LogSalePrice)
-set.seed(42)
-modelo_nb_reg <- naiveBayes(LogSalePrice ~ ., data = train_set)
-
-# 9. Predicción en el conjunto de prueba
-predicciones_reg <- predict(modelo_nb_reg, newdata = test_set)
-
-# 10. Evaluación del modelo de regresión: Calcular el Error Cuadrático Medio (MSE)
-mse_nb <- mean((test_set$LogSalePrice - predicciones_reg)^2, na.rm = TRUE)
-cat("Error cuadrático medio (MSE) del modelo Naive Bayes (Regresión):", mse_nb, "\n")
-
-# 11. MODELO DE NAIVE BAYES PARA CLASIFICACIÓN (Categoría)
-set.seed(42)
-modelo_nb_class <- naiveBayes(Categoria ~ ., data = train_set)
-
-# 12. Predicción en el conjunto de prueba
-predicciones_class <- predict(modelo_nb_class, newdata = test_set)
-
-# 13. Evaluación del modelo de clasificación: Matriz de confusión y F1-Score
-conf_matrix <- confusionMatrix(predicciones_class, test_set$Categoria)
-print(conf_matrix)
-
-# Calcular F1-Score por clase
-f1_scores <- conf_matrix$byClass[, "F1"]
-cat("F1-Score para cada categoría:\n")
-print(f1_scores)
-
-# 14. Gráfico de comparación de valores reales vs predichos (Regresión)
-ggplot(data.frame(Real = test_set$LogSalePrice, Predicho = predicciones_reg), aes(x = Real, y = Predicho)) +
-  geom_point(alpha = 0.5, color = "blue") +
-  geom_abline(slope = 1, intercept = 0, col = "red", linetype = "dashed") +
-  labs(title = "Predicción del Modelo Naive Bayes vs Valores Reales",
-       x = "Precio Real (Log)",
-       y = "Precio Predicho (Log)") +
-  theme_minimal()
-
-# 15. Gráfico de comparación de predicciones vs valores reales (Clasificación)
-ggplot(data.frame(Real = test_set$Categoria, Predicho = predicciones_class), aes(x = Real, fill = Predicho)) +
-  geom_bar(position = "dodge", color = "black", alpha = 0.8) +
-  labs(title = "Comparación de Predicciones del Modelo Naive Bayes",
-       x = "Categoría Real",
-       y = "Cantidad de Casas") +
-  theme_minimal() +
-  theme(legend.position = "top", legend.title = element_blank()) +
-  scale_fill_manual(values = c("Económica" = "#E74C3C", "Intermedia" = "#27AE60", "Cara" = "#3498DB"))
 ```
+
 
 ### 6. Haga un análisis de la eficiencia del modelo de clasificación usando una matriz de confusión. Tenga en cuenta la efectividad, donde el algoritmo se equivocó más, donde se equivocó menos y la importancia que tienen los errores. 
 
