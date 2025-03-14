@@ -31,7 +31,272 @@ Para este punto, ya se ha realizado el proceso para descargar del sitio web: [Ho
 ```
 ### 1. Elabore un modelo de regresión usando bayes ingenuo (naive bayes), el conjunto de entrenamiento y la variable respuesta SalesPrice. Prediga con el modelo y explique los resultados a los que llega. Asegúrese que los conjuntos de entrenamiento y prueba sean los mismos de las hojas anteriores para que los modelos sean comparables. 
 
+```{r}
+# Cargar librerías necesarias
+library(e1071)  # Para Naive Bayes
+library(caret)  # Para particionar los datos y evaluar el modelo
+library(dplyr)  # Para manipulación de datos
+library(ggplot2) # Para visualización
 
+# 1. Cargar conjuntos de datos asegurando que sean los mismos que en entregas anteriores
+train_set <- read.csv("train_set.csv", stringsAsFactors = TRUE)
+test_set <- read.csv("test_set.csv", stringsAsFactors = TRUE)
+
+# 2. Eliminar la columna Id si existe
+if ("Id" %in% colnames(train_set)) {
+  train_set <- train_set %>% select(-Id)
+}
+if ("Id" %in% colnames(test_set)) {
+  test_set <- test_set %>% select(-Id)
+}
+
+# 3. Verificar que SalePrice está presente
+if (!"SalePrice" %in% colnames(train_set)) {
+  stop("Error: La variable 'SalePrice' no está en el dataset de entrenamiento.")
+}
+if (!"SalePrice" %in% colnames(test_set)) {
+  stop("Error: La variable 'SalePrice' no está en el dataset de prueba.")
+}
+
+# 4. Manejar valores faltantes en SalePrice
+train_set <- train_set %>% filter(!is.na(SalePrice))
+test_set <- test_set %>% filter(!is.na(SalePrice))
+
+# 5. Aplicar transformación logarítmica a SalePrice para mejorar distribución
+train_set$LogSalePrice <- log(train_set$SalePrice)
+test_set$LogSalePrice <- log(test_set$SalePrice)
+
+# 6. Convertir SalePrice en una variable categórica para clasificación
+quantiles <- quantile(train_set$SalePrice, probs = c(0.33, 0.66), na.rm = TRUE)
+
+train_set$Categoria <- cut(train_set$SalePrice,
+                           breaks = c(-Inf, quantiles[1], quantiles[2], Inf),
+                           labels = c("Económica", "Intermedia", "Cara"))
+
+test_set$Categoria <- cut(test_set$SalePrice,
+                          breaks = c(-Inf, quantiles[1], quantiles[2], Inf),
+                          labels = c("Económica", "Intermedia", "Cara"))
+
+# Convertir `Categoria` a factor
+train_set$Categoria <- as.factor(train_set$Categoria)
+test_set$Categoria <- as.factor(test_set$Categoria)
+
+# 7. Asegurar que las variables categóricas tengan los mismos niveles en train y test
+categorical_vars <- names(train_set)[sapply(train_set, is.factor)]
+for (var in categorical_vars) {
+  test_set[[var]] <- factor(test_set[[var]], levels = levels(train_set[[var]]))
+}
+
+# 8. MODELO DE NAIVE BAYES PARA REGRESIÓN (LogSalePrice)
+set.seed(42)
+modelo_nb_reg <- naiveBayes(LogSalePrice ~ ., data = train_set)
+
+# 9. Predicción en el conjunto de prueba
+predicciones_reg <- predict(modelo_nb_reg, newdata = test_set)
+
+# 10. Evaluación del modelo de regresión: Calcular el Error Cuadrático Medio (MSE) y su conversión
+if (!is.numeric(predicciones_reg)) {
+  predicciones_reg <- as.numeric(as.character(predicciones_reg))
+}
+mse_nb <- mean((test_set$LogSalePrice - predicciones_reg)^2, na.rm = TRUE)
+rmse_nb <- sqrt(mse_nb)  # Raíz cuadrada del MSE
+
+# Convertir RMSE de la escala logarítmica a dólares
+error_dolares <- exp(rmse_nb)
+
+cat("Error cuadrático medio (MSE) del modelo Naive Bayes (Regresión):", mse_nb, "\n")
+cat("Raíz del error cuadrático medio (RMSE):", rmse_nb, "\n")
+cat("Error estimado en dólares:", error_dolares, "\n")
+
+# 11. MODELO DE NAIVE BAYES PARA CLASIFICACIÓN (Categoría)
+set.seed(42)
+modelo_nb_class <- naiveBayes(Categoria ~ ., data = train_set)
+
+# 12. Predicción en el conjunto de prueba
+predicciones_class <- predict(modelo_nb_class, newdata = test_set)
+
+# 13. Evaluación del modelo de clasificación: Matriz de confusión y F1-Score
+conf_matrix <- confusionMatrix(predicciones_class, test_set$Categoria)
+print(conf_matrix)
+
+# Calcular F1-Score por clase
+f1_scores <- conf_matrix$byClass[, "F1"]
+cat("F1-Score para cada categoría:\n")
+print(f1_scores)
+
+# 14. Gráfico de comparación de valores reales vs predichos (Regresión)
+ggplot(data.frame(Real = test_set$LogSalePrice, Predicho = predicciones_reg), aes(x = Real, y = Predicho)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_abline(slope = 1, intercept = 0, col = "red", linetype = "dashed") +
+  labs(title = "Predicción del Modelo Naive Bayes vs Valores Reales",
+       x = "Precio Real (Log)",
+       y = "Precio Predicho (Log)") +
+  theme_minimal()
+
+# 15. Gráfico de comparación de predicciones vs valores reales (Clasificación)
+ggplot(data.frame(Real = test_set$Categoria, Predicho = predicciones_class), aes(x = Real, fill = Predicho)) +
+  geom_bar(position = "dodge", color = "black", alpha = 0.8) +
+  labs(title = "Comparación de Predicciones del Modelo Naive Bayes",
+       x = "Categoría Real",
+       y = "Cantidad de Casas") +
+  theme_minimal() +
+  theme(legend.position = "top", legend.title = element_blank()) +
+  scale_fill_manual(values = c("Económica" = "#E74C3C", "Intermedia" = "#27AE60", "Cara" = "#3498DB"))
+```
+**Análisis y Conclusiones del Modelo Naive Bayes**
+
+**1.1.  Evaluación del Modelo de Regresión**
+
+El modelo de Naive Bayes fue utilizado para predecir los precios de las casas en su forma logarítmica. Para evaluar su desempeño, analizamos el Error Cuadrático Medio (MSE), la Raíz del Error Cuadrático Medio (RMSE) y el error estimado en dólares.
+
+- MSE (Error Cuadrático Medio) = 0.05044311
+El MSE mide la diferencia promedio cuadrática entre los valores reales y los valores predichos. Un valor bajo indica que el modelo tiene un error reducido. En este caso, el valor 0.0504 sugiere que la diferencia entre los valores reales y predichos es pequeña.
+
+- RMSE (Raíz del Error Cuadrático Medio) = 0.2245954
+La raíz cuadrada del MSE nos permite interpretar el error en la misma escala que los valores de salida (logaritmo de los precios). Un RMSE de 0.2246 indica que, en promedio, los valores predichos se desvían por esta cantidad del valor real en la escala logarítmica.
+
+- Error estimado en dólares = 1.251816
+Para convertir el RMSE en una interpretación más útil, revertimos la transformación logarítmica usando la función exponencial. Esto nos indica que, en promedio, el error en la predicción es aproximadamente 1.25 veces el valor real del precio de la casa.
+
+Interpretación: Esto significa que, en promedio, el modelo puede estar subestimando o sobrestimando los precios en un factor de 1.25, lo cual en términos prácticos indica que el modelo tiene un margen de error del 25% en los valores predichos.
+
+**1.2. Evaluación del Modelo de Clasificación**
+
+El modelo de Naive Bayes también fue usado para clasificar las casas en tres categorías: Económica, Intermedia y Cara. Para evaluar su desempeño, analizamos la matriz de confusión, la precisión global, la estadística Kappa y las métricas por clase.
+
+**1.2.1. Matriz de Confusión**
+
+La matriz de confusión nos muestra cuántas casas fueron correctamente clasificadas y cuántas fueron incorrectamente asignadas a otra categoría.
+ 
+|    **Categoría**     |  **Económica (Real)**   |**Intermedia (Real)**|**Cara (Real)** |
+|----------------------|-------------------------|---------------------|----------------|
+|**Económica (Pred.)** |           89            |           31        |        4       |   
+|**Intermedia (Pred.)**|            5            |           64        |        5       |
+|   **Cara (Pred.)**   |            0            |           12        |       81       |
+
+Interpretación:
+
+- La mayoría de las casas fueron correctamente clasificadas en su categoría real.
+
+- Errores significativos en la categoría "Intermedia", donde 31 casas fueron clasificadas erróneamente como Económicas y 12 como Caras.
+
+- La categoría "Cara" tuvo la menor cantidad de errores, lo que sugiere que el modelo es mejor identificando casas de alto valor.
+
+**1.2.2. Precisión Global y Estadística Kappa**
+
+✔ Precisión Global = 80.41%
+ 
+- La precisión global indica que el modelo clasifica correctamente el 80.41% de las casas en su categoría correcta.
+
+✔ Kappa = 0.7077
+
+- La estadística Kappa mide qué tan bien funciona el modelo en comparación con una clasificación aleatoria. Un valor de 0.70 indica un buen nivel de acuerdo, pero deja margen para mejorar.
+
+**1.3. Evaluación por Clase**
+
+Para analizar cómo se desempeñó el modelo en cada categoría, evaluamos la sensibilidad, especificidad, valor predictivo positivo (PPV) y el F1-Score.
+
+**1.3.1. Sensibilidad (Recall)**
+
+Indica qué tan bien el modelo detecta correctamente cada clase.
+
+- Económica: 94.68% → El modelo detectó casi todas las casas económicas correctamente.
+
+- Intermedia: 59.81% → Se desempeñó peor en esta categoría, indicando que muchas casas intermedias fueron clasificadas incorrectamente.
+
+- Cara: 90.00% → La detección de casas caras fue bastante alta.
+
+Conclusión: El modelo tiende a confundir casas intermedias con económicas o caras, lo cual sugiere que podría mejorar en la clasificación de casas en este rango medio.
+
+**1.3.2. Especificidad**
+
+Indica qué tan bien el modelo evita clasificar incorrectamente una clase.
+
+- Económica: 82.23%
+
+- Intermedia: 94.57%
+
+- Cara: 94.03%
+
+Interpretación:
+
+- El modelo distingue bien las casas intermedias y caras, pero tiene más problemas separando económicas e intermedias.
+
+- Es menos preciso cuando clasifica casas económicas, ya que algunas de ellas terminan en la categoría intermedia.
+
+**1.3.3. F1-Score (Balance entre precisión y recall)**
+
+- Económica: 0.8165
+
+- Intermedia: 0.7071
+
+- Cara: 0.8852
+
+Interpretación:
+
+- El mejor desempeño está en la categoría Cara (0.88), lo que indica que el modelo maneja bien los precios altos.
+
+- El peor desempeño es en la categoría Intermedia (0.70), lo que confirma que la clasificación en este rango es el mayor desafío.
+
+**1.4. Desempeño del Modelo de Regresión**
+
+- El MSE de 0.0504 y RMSE de 0.2246 indican un buen nivel de ajuste, aunque hay una variabilidad en la predicción.
+
+- El error estimado en dólares (1.25 veces) significa que el modelo puede sobreestimar o subestimar los precios de las casas en aproximadamente un 25%.
+
+- Este margen de error es aceptable para una estimación rápida, pero podría ser problemático en decisiones comerciales donde la precisión es clave.
+
+**1.4.1. Desempeño del Modelo de Clasificación**
+
+- Precisión global del 80.41% es un buen resultado para un modelo de clasificación en 3 categorías.
+
+- El modelo funciona bien en casas económicas y caras, pero tiene problemas con casas intermedias.
+
+- La clase intermedia es la más difícil de clasificar, lo que sugiere que puede haber una superposición en las características de estas casas con las otras categorías.
+
+**Análisis de las Gráficas del Inciso 1: Modelo de Naive Bayes para Regresión y Clasificación**
+
+**Gráfico 1: Predicción del Modelo Naive Bayes vs Valores Reales (Regresión)**
+
+Este gráfico muestra la relación entre los valores reales de LogSalePrice (precio de venta en escala logarítmica) y los valores predichos por el modelo de Naive Bayes en la tarea de regresión. Se puede observar:
+
+- **Distribución Alineada:** La mayoría de los puntos se encuentran cercanos a la línea roja punteada, que representa la igualdad entre el valor real y el predicho. Esto sugiere que el modelo logra capturar una relación significativa entre las variables explicativas y el precio de venta.
+
+- **Mayor Dispersión en Valores Bajos:** Se observa que para precios bajos (aproximadamente menores a 11 en escala logarítmica), hay mayor dispersión de los puntos, lo que indica que el modelo no es tan preciso en estos casos.
+
+- **Menos Errores en Valores Altos:** Para precios altos (mayores a 12), la predicción parece ajustarse mejor a la tendencia general, aunque hay algunos valores dispersos fuera de la línea esperada.
+
+En general, la regresión con Naive Bayes muestra un buen desempeño, con una tendencia clara de ajuste, pero con errores más notorios en la predicción de valores bajos.
+
+**Gráfico 2: Comparación de Predicciones del Modelo Naive Bayes (Clasificación)**
+
+Este gráfico representa la cantidad de casas en cada categoría (Económica, Intermedia y Cara) según las predicciones del modelo de Naive Bayes comparadas con los valores reales.
+
+- **Sobrerrepresentación de Económica:** Se observa que el modelo predice más casas en la categoría Económica de las que realmente pertenecen a esta clase. Esto sugiere que el modelo tiende a clasificar algunas casas intermedias como económicas, lo que se alinea con la sensibilidad alta (0.9468) pero una precisión más baja (0.7177) en esta clase.
+
+- **Dificultad en la Clase Intermedia:** La clase Intermedia muestra más errores en la predicción. Varias casas de esta categoría han sido clasificadas como Económica o Cara, lo que indica que esta clase es la más difícil de identificar correctamente para el modelo. Esto concuerda con la baja sensibilidad (0.5981) y la precisión media (0.8649) de esta categoría.
+
+- **Buena Predicción para Cara:** La categoría Cara es la que presenta mejor desempeño después de Económica, con pocas casas clasificadas erróneamente en Intermedia o Económica, lo que se refleja en su alta sensibilidad (0.9000) y precisión aceptable (0.8710).
+
+El modelo de Naive Bayes funciona bien para clasificar casas Económicas y Caras, pero tiene más dificultades en la categoría Intermedia, lo cual es un resultado esperable ya que esta categoría puede solaparse con las otras dos.
+
+**Conclusión General**
+
+**Regresión:**
+
+- La predicción de precios sigue bien la tendencia general, con errores menores en valores altos y mayor dispersión en valores bajos.
+
+- El modelo logra un MSE de 0.0504, lo que indica un error moderado pero aceptable.
+
+- La conversión a error en dólares mostró que, en promedio, la diferencia entre el valor real y el predicho es de aproximadamente 1.25 dólares, lo cual es un margen de error bastante bajo en el contexto del mercado inmobiliario.
+
+**Clasificación:**
+
+- El modelo tiene un accuracy de 80.41%, con un buen desempeño en Económica y Cara, pero con problemas en Intermedia.
+
+- La clase Intermedia es la más difícil de predecir, probablemente debido a la cercanía de precios con las otras categorías.
+
+- El F1-Score es alto en Económica (0.8165) y en Cara (0.8852), mientras que en Intermedia es más bajo (0.7071), lo que refleja que el modelo tiene más problemas en esta categoría.
 
 ### 2. Analice los resultados del modelo de regresión usando bayes ingenuo. ¿Qué tan bien le fue prediciendo? Utilice las métricas correctas.
 
@@ -43,11 +308,194 @@ Para este punto, ya se ha realizado el proceso para descargar del sitio web: [Ho
 
 ### 4. Haga un modelo de clasificación, use la variable categórica que hizo con el precio de las casas (barata, media y cara) como variable respuesta. 
 
+```{r}
+# Cargar librerías necesarias
+library(e1071)  # Naive Bayes
+library(caret)  # Evaluación del modelo
+library(dplyr)  # Manipulación de datos
+library(ggplot2) # Visualización
 
+# 1. Cargar conjuntos de datos asegurando que sean los mismos que en entregas anteriores
+train_set <- read.csv("train_set.csv", stringsAsFactors = TRUE)
+test_set <- read.csv("test_set.csv", stringsAsFactors = TRUE)
 
+# 2. Eliminar la columna Id si existe
+if ("Id" %in% colnames(train_set)) {
+  train_set <- train_set %>% select(-Id)
+}
+if ("Id" %in% colnames(test_set)) {
+  test_set <- test_set %>% select(-Id)
+}
+
+# 3. Verificar que SalePrice está presente
+if (!"SalePrice" %in% colnames(train_set)) {
+  stop("Error: La variable 'SalePrice' no está en el dataset de entrenamiento.")
+}
+if (!"SalePrice" %in% colnames(test_set)) {
+  stop("Error: La variable 'SalePrice' no está en el dataset de prueba.")
+}
+
+# 4. Manejar valores faltantes en SalePrice
+train_set <- train_set %>% filter(!is.na(SalePrice))
+test_set <- test_set %>% filter(!is.na(SalePrice))
+
+# 5. Convertir SalePrice en una variable categórica basada en percentiles
+quantiles <- quantile(train_set$SalePrice, probs = c(0.33, 0.66), na.rm = TRUE)
+
+train_set$Categoria <- cut(train_set$SalePrice,
+                           breaks = c(-Inf, quantiles[1], quantiles[2], Inf),
+                           labels = c("Económica", "Intermedia", "Cara"))
+
+test_set$Categoria <- cut(test_set$SalePrice,
+                          breaks = c(-Inf, quantiles[1], quantiles[2], Inf),
+                          labels = c("Económica", "Intermedia", "Cara"))
+
+# Convertir `Categoria` a factor
+train_set$Categoria <- as.factor(train_set$Categoria)
+test_set$Categoria <- as.factor(test_set$Categoria)
+
+# 6. Eliminar SalePrice para que no sea usado en la predicción
+train_set <- train_set %>% select(-SalePrice)
+test_set <- test_set %>% select(-SalePrice)
+
+# 7. Asegurar que las variables categóricas tengan los mismos niveles en train y test
+categorical_vars <- names(train_set)[sapply(train_set, is.factor)]
+
+for (var in categorical_vars) {
+  test_set[[var]] <- factor(test_set[[var]], levels = levels(train_set[[var]]))
+}
+
+# 8. Entrenar el modelo de Naive Bayes para clasificación
+set.seed(42)
+modelo_nb_class <- naiveBayes(Categoria ~ ., data = train_set)
+
+# 9. Predicción en el conjunto de prueba
+predicciones_class <- predict(modelo_nb_class, newdata = test_set)
+
+# 10. Evaluación del modelo: Matriz de confusión y F1-Score
+conf_matrix <- confusionMatrix(predicciones_class, test_set$Categoria)
+print(conf_matrix)
+
+# Calcular F1-Score por clase
+f1_scores <- conf_matrix$byClass[, "F1"]
+cat("F1-Score para cada categoría:\n")
+print(f1_scores)
+
+# 11. Gráfico de comparación de predicciones vs valores reales (Clasificación)
+ggplot(data.frame(Real = test_set$Categoria, Predicho = predicciones_class), aes(x = Real, fill = Predicho)) +
+  geom_bar(position = "dodge", color = "black", alpha = 0.8) +
+  labs(title = "Comparación de Predicciones del Modelo Naive Bayes",
+       x = "Categoría Real",
+       y = "Cantidad de Casas") +
+  theme_minimal() +
+  theme(legend.position = "top", legend.title = element_blank()) +
+  scale_fill_manual(values = c("Económica" = "#E74C3C", "Intermedia" = "#27AE60", "Cara" = "#3498DB"))
+```
 ### 5. Utilice los modelos con el conjunto de prueba y determine la eficiencia del algoritmo para predecir y clasificar. 
 
+```{r}
+# Cargar librerías necesarias
+library(e1071)  # Para Naive Bayes
+library(caret)  # Para evaluación del modelo
+library(dplyr)  # Para manipulación de datos
+library(ggplot2) # Para visualización
 
+# 1. Cargar conjuntos de datos asegurando que sean los mismos que en entregas anteriores
+train_set <- read.csv("train_set.csv", stringsAsFactors = TRUE)
+test_set <- read.csv("test_set.csv", stringsAsFactors = TRUE)
+
+# 2. Eliminar la columna Id si existe
+if ("Id" %in% colnames(train_set)) {
+  train_set <- train_set %>% select(-Id)
+}
+if ("Id" %in% colnames(test_set)) {
+  test_set <- test_set %>% select(-Id)
+}
+
+# 3. Verificar que SalePrice está presente
+if (!"SalePrice" %in% colnames(train_set)) {
+  stop("Error: La variable 'SalePrice' no está en el dataset de entrenamiento.")
+}
+if (!"SalePrice" %in% colnames(test_set)) {
+  stop("Error: La variable 'SalePrice' no está en el dataset de prueba.")
+}
+
+# 4. Manejar valores faltantes en SalePrice
+train_set <- train_set %>% filter(!is.na(SalePrice))
+test_set <- test_set %>% filter(!is.na(SalePrice))
+
+# 5. Aplicar transformación logarítmica a SalePrice para mejorar distribución
+train_set$LogSalePrice <- log(train_set$SalePrice)
+test_set$LogSalePrice <- log(test_set$SalePrice)
+
+# 6. Convertir SalePrice en una variable categórica para clasificación
+quantiles <- quantile(train_set$SalePrice, probs = c(0.33, 0.66), na.rm = TRUE)
+
+train_set$Categoria <- cut(train_set$SalePrice,
+                           breaks = c(-Inf, quantiles[1], quantiles[2], Inf),
+                           labels = c("Económica", "Intermedia", "Cara"))
+
+test_set$Categoria <- cut(test_set$SalePrice,
+                          breaks = c(-Inf, quantiles[1], quantiles[2], Inf),
+                          labels = c("Económica", "Intermedia", "Cara"))
+
+# Convertir `Categoria` a factor
+train_set$Categoria <- as.factor(train_set$Categoria)
+test_set$Categoria <- as.factor(test_set$Categoria)
+
+# 7. Asegurar que las variables categóricas tengan los mismos niveles en train y test
+categorical_vars <- names(train_set)[sapply(train_set, is.factor)]
+
+for (var in categorical_vars) {
+  test_set[[var]] <- factor(test_set[[var]], levels = levels(train_set[[var]]))
+}
+
+# 8. MODELO DE NAIVE BAYES PARA REGRESIÓN (LogSalePrice)
+set.seed(42)
+modelo_nb_reg <- naiveBayes(LogSalePrice ~ ., data = train_set)
+
+# 9. Predicción en el conjunto de prueba
+predicciones_reg <- predict(modelo_nb_reg, newdata = test_set)
+
+# 10. Evaluación del modelo de regresión: Calcular el Error Cuadrático Medio (MSE)
+mse_nb <- mean((test_set$LogSalePrice - predicciones_reg)^2, na.rm = TRUE)
+cat("Error cuadrático medio (MSE) del modelo Naive Bayes (Regresión):", mse_nb, "\n")
+
+# 11. MODELO DE NAIVE BAYES PARA CLASIFICACIÓN (Categoría)
+set.seed(42)
+modelo_nb_class <- naiveBayes(Categoria ~ ., data = train_set)
+
+# 12. Predicción en el conjunto de prueba
+predicciones_class <- predict(modelo_nb_class, newdata = test_set)
+
+# 13. Evaluación del modelo de clasificación: Matriz de confusión y F1-Score
+conf_matrix <- confusionMatrix(predicciones_class, test_set$Categoria)
+print(conf_matrix)
+
+# Calcular F1-Score por clase
+f1_scores <- conf_matrix$byClass[, "F1"]
+cat("F1-Score para cada categoría:\n")
+print(f1_scores)
+
+# 14. Gráfico de comparación de valores reales vs predichos (Regresión)
+ggplot(data.frame(Real = test_set$LogSalePrice, Predicho = predicciones_reg), aes(x = Real, y = Predicho)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_abline(slope = 1, intercept = 0, col = "red", linetype = "dashed") +
+  labs(title = "Predicción del Modelo Naive Bayes vs Valores Reales",
+       x = "Precio Real (Log)",
+       y = "Precio Predicho (Log)") +
+  theme_minimal()
+
+# 15. Gráfico de comparación de predicciones vs valores reales (Clasificación)
+ggplot(data.frame(Real = test_set$Categoria, Predicho = predicciones_class), aes(x = Real, fill = Predicho)) +
+  geom_bar(position = "dodge", color = "black", alpha = 0.8) +
+  labs(title = "Comparación de Predicciones del Modelo Naive Bayes",
+       x = "Categoría Real",
+       y = "Cantidad de Casas") +
+  theme_minimal() +
+  theme(legend.position = "top", legend.title = element_blank()) +
+  scale_fill_manual(values = c("Económica" = "#E74C3C", "Intermedia" = "#27AE60", "Cara" = "#3498DB"))
+```
 
 ### 6. Haga un análisis de la eficiencia del modelo de clasificación usando una matriz de confusión. Tenga en cuenta la efectividad, donde el algoritmo se equivocó más, donde se equivocó menos y la importancia que tienen los errores. 
 
@@ -66,3 +514,5 @@ Para este punto, ya se ha realizado el proceso para descargar del sitio web: [Ho
 
 
 ### 10.	Compare la eficiencia del algoritmo con el resultado obtenido con el árbol de decisión (el de clasificación) y el modelo de random forest que hizo en la hoja pasada. ¿Cuál es mejor para predecir? ¿Cuál se demoró más en procesar? 
+
+
