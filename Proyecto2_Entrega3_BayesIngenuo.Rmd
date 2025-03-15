@@ -813,19 +813,9 @@ ggplot(data.frame(Real = test_set$Categoria, Predicho = predicciones_class), aes
 
 - Mide el grado de acuerdo entre las predicciones y las categorías reales ajustando la probabilidad de clasificación correcta por azar. Un valor cercano a 1 indica un acuerdo alto, por lo que este resultado refuerza la confianza en el modelo.
 
-**3. Matriz de Confusión:**
 
-**Clase Económica:** Sensibilidad (0.9468) y Precisión Positiva (0.7177)
 
-- Se predicen correctamente la mayoría de las casas económicas, aunque algunas se confunden con la categoría Intermedia.
 
-**Clase Intermedia:** Sensibilidad (0.5981) y Precisión Positiva (0.8649)
-
-- Es la categoría con mayor confusión, lo que sugiere que algunas casas intermedias se clasifican erróneamente como económicas o caras.
-
-**Clase Cara:** Sensibilidad (0.9000) y Precisión Positiva (0.8710)
-
-- Se predicen correctamente la mayoría de las casas caras, aunque algunas se clasifican como intermedias.
 
 **F1-Score por Categoría:**
 
@@ -886,8 +876,49 @@ En general, los modelos aplicados con el conjunto de prueba muestran que Naive B
 ### 6. Haga un análisis de la eficiencia del modelo de clasificación usando una matriz de confusión. Tenga en cuenta la efectividad, donde el algoritmo se equivocó más, donde se equivocó menos y la importancia que tienen los errores. 
 
 ```{r}
+conf_matrix <- confusionMatrix(predicciones_class, test_set$Categoria)
 
+# Imprimir matriz de confusión y métricas
+print(conf_matrix)
+conf_df <- as.data.frame(conf_matrix$table)
+
+# Graficar la matriz de confusión
+ggplot(conf_df, aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), color = "white", size = 5) +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(title = "Matriz de Confusión",
+       x = "Clase Real",
+       y = "Predicción") +
+  theme_minimal()
 ```
+
+#### Analisis de Matriz de correccion
+
+**Clases del Modelo**
+
+**Clase Económica:** Sensibilidad (0.9468) y Precisión Positiva (0.7177)
+
+- Se predicen correctamente la mayoría de las casas económicas, aunque algunas se confunden con la categoría Intermedia.
+
+**Clase Intermedia:** Sensibilidad (0.5981) y Precisión Positiva (0.8649)
+
+- Es la categoría con mayor confusión, lo que sugiere que algunas casas intermedias se clasifican erróneamente como económicas o caras.
+
+**Clase Cara:** Sensibilidad (0.9000) y Precisión Positiva (0.8710)
+
+- Se predicen correctamente la mayoría de las casas caras, aunque algunas se clasifican como intermedias.
+
+
+**Errores Cometidos**
+
+Podemos ver que el modelo se esta equivocando mas en clasificar el precio de las casas intermedias, de hecho es el que mas mal le ha ido, pero a diferencia de las otras clasificaciones, en razon y proporcion es donde menos se ha equivacado en clasificar, de hecho se equivoco mas en clasificar economicas que en intermedias y en caras. 
+
+Se observa que se llego a equivocar mas en clasificar economicas siendo de 0.717 la sensibilidad en detectar casas economicas. Muy posiblemente porque se observa que llego a tener errores al confundir casas economicas y casas intermedias. 
+
+Debido a que existen muchos mas factores en determinar si una casa es economica e intermedia que una cara, esto debido a la distribucion desbalanceada, debido a que existe un sesgo hacia valores de casas economicos y caros. 
+
+Aun asi en comparacion a otros modelos se ha visto que ha sido mas eficiente en la clasificacion que tiene. 
 
 
 ### 7. Analice el modelo. ¿Cree que pueda estar sobreajustado? 
