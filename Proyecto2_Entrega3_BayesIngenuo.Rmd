@@ -923,28 +923,425 @@ Aun asi en comparacion a otros modelos se ha visto que ha sido mas eficiente en 
 
 ### 7. Analice el modelo. ¿Cree que pueda estar sobreajustado? 
 
-```{r}
+Analizando el modelo vemos que realmente no esta sobreajustado ni subajustado. para que este sobreajustado necesitamos que el accurrancy del modelo, el f1 score  o cualquier metrica de desempeño nos de cerca de 1 esto indica que el modelo no es generalista y no va a predecir bien los datos. 
 
-```
+En cambio aqui nuestro modelo tiene 0.80 lo que indica que no esta sobreajustado y de hecho al pasarle los datos de prueba rinde bastante bien y logra separar los datos clasificando de manera efectiva. Lo mismo pasa con el de regresion, este modelo tiene un acurrancy de 0.81 lo que indica que no esta sobreajustado, y de hecho podemos mejorar en un futuro. 
 
 
 ### 8. Haga un modelo usando validación cruzada, compare los resultados de este con los del modelo anterior. ¿Cuál funcionó mejor? 
 
 ```{r}
+# Cargar librerías necesarias
+library(e1071)   # Naive Bayes
+library(caret)   # Validación cruzada
+library(dplyr)   # Manipulación de datos
+library(ggplot2) # Visualización
+
+
+train_set <- read.csv("train_set.csv", stringsAsFactors = TRUE)
+test_set <- read.csv("test_set.csv", stringsAsFactors = TRUE)
+
+
+
+
+
+
+train_set <- train_set %>% select(-one_of("Id"))
+test_set <- test_set %>% select(-one_of("Id"))
+
+
+train_set <- na.omit(train_set)  
+test_set <- na.omit(test_set)
+
+
+if (!"SalePrice" %in% colnames(train_set)) stop("Error: 'SalePrice' no está en train_set.")
+
+quantiles <- quantile(train_set$SalePrice, probs = c(0.33, 0.66), na.rm = TRUE)
+train_set$Categoria <- cut(train_set$SalePrice, 
+                           breaks = c(-Inf, quantiles[1], quantiles[2], Inf), 
+                           labels = c("Económica", "Intermedia", "Cara"), 
+                           include.lowest = TRUE)
+train_set$Categoria <- as.factor(train_set$Categoria)
+
+
+categorical_vars <- names(train_set)[sapply(train_set, is.factor)]
+for (var in categorical_vars) {
+  if (var %in% names(test_set)) {  
+    levels_test <- levels(test_set[[var]])
+    levels_train <- levels(train_set[[var]])
+    
+    if (!identical(levels_train, levels_test)) {
+      test_set[[var]] <- factor(test_set[[var]], levels = levels_train)
+    }
+  }
+}
+
+
+
+
+
+fill_na_with_mode <- function(df, column) {
+  mode_value <- names(which.max(table(df[[column]])))  
+  df[[column]][is.na(df[[column]])] <- mode_value
+  return(df)
+}
+
+test_set <- fill_na_with_mode(test_set, "Condition2")
+test_set <- fill_na_with_mode(test_set, "RoofMatl")
+test_set <- fill_na_with_mode(test_set, "Functional")
+
+
+  
+
+
+control <- trainControl(method = "cv", number = 10)
+
+
+
+levels(test_data$MSZoning) <- levels(train_set$MSZoning)
+
+
+
+
+set.seed(42)
+modelo_nb_cv <- train(Categoria ~ ., 
+                      data = train_set, 
+                      method = "naive_bayes", 
+                      trControl = control, 
+                      na.action = na.omit)  
+
+
+print(modelo_nb_cv)
+
+
+test_set$Categoria <- cut(test_set$SalePrice, 
+                          breaks = c(-Inf, quantiles[1], quantiles[2], Inf), 
+                          labels = c("Económica", "Intermedia", "Cara"), 
+                          include.lowest = TRUE)
+test_set$Categoria <- as.factor(test_set$Categoria)
+
+predicciones_test <- predict(modelo_nb_cv, newdata = test_set)
+
+
+conf_matrix <- confusionMatrix(predicciones_test, test_set$Categoria)
+print(conf_matrix)
+
+
+ggplot(data.frame(Real = test_set$Categoria, Predicho = predicciones_test), aes(x = Real, fill = Predicho)) +
+  geom_bar(position = "dodge", color = "black", alpha = 0.8) +
+  labs(title = "Validación Cruzada: Predicción vs Realidad",
+       x = "Categoría Real",
+       y = "Cantidad de Casas") +
+  theme_minimal() +
+  theme(legend.position = "top", legend.title = element_blank()) +
+  scale_fill_manual(values = c("Económica" = "#E74C3C", "Intermedia" = "#27AE60", "Cara" = "#3498DB"))
+
 
 ```
+
+
+
+
+
+#### Analisis de Validacion Cruzada
+
+Se puede ver que se realizo una validacion cruzada, podemos ver que el acurrancy fue de 0.73 , si usaremos acurrancy ya que al omitir los na realmente solo estamos quitando 4 na del dataset original. Y haciendo una recapitulacion con el modelo anterior realmente no hubo mejora, de hecho empeoro un poco. Muy posiblemente debido a que es un modelo sobreajustado y no generalizo bien los datos de prueba. 
+
+Algo que podemos ver es que si hubo mejora en ciertos aspectos, el primero es que este modelo diferencia mejor entre clase economica y cara que el modelo anterior teniendo un sensitivy de 1 y 0.84 lo cual es bastante bueno, pero flaquea al diferenciar economica siendo de 0.40 de hecho mucho peor del anterior de 0.60. Esto muy posiblemente porque esta o muy sobreajustado nuestro modelo o se esta solapando con otras clases y no sabe diferenciar bien. 
+
+
+
 
 
 ### 9. Tanto para los modelos de regresión como de clasificación, pruebe con varios valores de los hiperparámetros, use el mejor modelo del tuneo, ¿Mejoraron los modelos? Explique 
 
+
+#### Modelo de Clasificacion
 ```{r}
+# Cargar librerías necesarias
+library(e1071)  # Para Naive Bayes
+library(caret)  # Para particionar los datos y evaluar el modelo
+library(dplyr)  # Para manipulación de datos
+library(ggplot2) # Para visualización
+
+# 1. Cargar conjuntos de datos asegurando que sean los mismos que en entregas anteriores
+train_set <- read.csv("train_set.csv", stringsAsFactors = TRUE)
+test_set <- read.csv("test_set.csv", stringsAsFactors = TRUE)
+
+# 2. Eliminar la columna Id si existe
+if ("Id" %in% colnames(train_set)) {
+  train_set <- train_set %>% dplyr::select(-Id)
+}
+if ("Id" %in% colnames(test_set)) {
+  test_set <- test_set %>% dplyr::select(-Id)
+}
+
+
+# 3. Verificar que SalePrice está presente
+if (!"SalePrice" %in% colnames(train_set)) {
+  stop("Error: La variable 'SalePrice' no está en el dataset de entrenamiento.")
+}
+if (!"SalePrice" %in% colnames(test_set)) {
+  stop("Error: La variable 'SalePrice' no está en el dataset de prueba.")
+}
+
+# 4. Manejar valores faltantes en SalePrice
+train_set <- train_set %>% filter(!is.na(SalePrice))
+test_set <- test_set %>% filter(!is.na(SalePrice))
+
+# 5. Convertir SalePrice en una variable categórica para clasificación
+quantiles <- quantile(train_set$SalePrice, probs = c(0.33, 0.66), na.rm = TRUE)
+
+train_set$Categoria <- cut(train_set$SalePrice,
+                           breaks = c(-Inf, quantiles[1], quantiles[2], Inf),
+                           labels = c("Económica", "Intermedia", "Cara"))
+
+test_set$Categoria <- cut(test_set$SalePrice,
+                          breaks = c(-Inf, quantiles[1], quantiles[2], Inf),
+                          labels = c("Económica", "Intermedia", "Cara"))
+
+# Convertir `Categoria` a factor
+train_set$Categoria <- as.factor(train_set$Categoria)
+test_set$Categoria <- as.factor(test_set$Categoria)
+
+# 6. Asegurar que las variables categóricas tengan los mismos niveles en train y test
+categorical_vars <- names(train_set)[sapply(train_set, is.factor)]
+for (var in categorical_vars) {
+  test_set[[var]] <- factor(test_set[[var]], levels = levels(train_set[[var]]))
+}
+
+# 7. MODELO DE NAIVE BAYES PARA CLASIFICACIÓN (Categoría)
+set.seed(42)
+modelo_nb_class <- naiveBayes(Categoria ~ ., data = train_set)
+
+# 8. Predicción en el conjunto de prueba
+predicciones_class <- predict(modelo_nb_class, newdata = test_set)
+
+# 9. Evaluación del modelo de clasificación: Matriz de confusión y F1-Score
+conf_matrix <- confusionMatrix(predicciones_class, test_set$Categoria)
+print(conf_matrix)
+
+# Calcular F1-Score por clase
+f1_scores <- conf_matrix$byClass[, "F1"]
+cat("F1-Score para cada categoría:\n")
+print(f1_scores)
+
+
+
+
+
+
+
+
+
+
+
+
+#Tunear laplace.
+
+
+set.seed(42)
+laplace_values <- seq(0, 5, by = 0.5)
+results <- data.frame(Laplace = laplace_values, Accuracy = NA)
+
+
+train_control <- trainControl(method = "cv", number = 5)
+
+for (i in 1:length(laplace_values)) {
+  modelo_nb <- naiveBayes(Categoria ~ ., data = train_set, laplace = laplace_values[i])
+  pred <- predict(modelo_nb, newdata = test_set)
+  conf_matrix <- confusionMatrix(pred, test_set$Categoria)
+  results$Accuracy[i] <- conf_matrix$overall["Accuracy"]
+}
+
+
+best_laplace <- results$Laplace[which.max(results$Accuracy)]
+cat("Mejor valor de laplace:", best_laplace, "\n")
+print(results)
+
+
+modelo_nb_tuned <- naiveBayes(Categoria ~ ., data = train_set, laplace = best_laplace)
+
+
+predicciones_tuned <- predict(modelo_nb_tuned, newdata = test_set)
+
+
+conf_matrix_tuned <- confusionMatrix(predicciones_tuned, test_set$Categoria)
+print(conf_matrix_tuned)
 
 ```
 
+
+#### Analisis
+
+Podemos ver que el acurrancy de hecho por cada laplace no ha mejorado nada, pero podemos ver que no debemos usar 2.0 ni 2.5 debido a que estos son los que peor hacen rendir al modelo, esto demuestra que nuestro modelo ya es suficiente con lo que tiene. 
+
+
+
+
+#### Modelo de Regresion
+
+```{r}
+library(e1071)  
+library(caret)  
+library(dplyr)  
+library(ggplot2)  
+
+
+train_set <- read.csv("train_set.csv", stringsAsFactors = TRUE)
+test_set <- read.csv("test_set.csv", stringsAsFactors = TRUE)
+
+
+if ("Id" %in% colnames(train_set)) {
+  train_set <- dplyr::select(train_set, -Id)
+}
+if ("Id" %in% colnames(test_set)) {
+  test_set <- dplyr::select(test_set, -Id)
+}
+
+if (!"SalePrice" %in% colnames(train_set) || !"SalePrice" %in% colnames(test_set)) {
+  stop("Error: La variable 'SalePrice' no está en los datasets.")
+}
+
+train_set <- train_set %>% filter(!is.na(SalePrice))
+test_set <- test_set %>% filter(!is.na(SalePrice))
+
+
+train_set$LogSalePrice <- log(train_set$SalePrice)
+test_set$LogSalePrice <- log(test_set$SalePrice)
+
+
+categorical_vars <- names(train_set)[sapply(train_set, is.factor)]
+for (var in categorical_vars) {
+  test_set[[var]] <- factor(test_set[[var]], levels = levels(train_set[[var]]))
+}
+
+
+parametros <- expand.grid(
+  laplace = c(0, 1, 5),
+  usekernel = c(TRUE, FALSE),
+  adjust = c(0.5, 1, 2)
+)
+
+
+resultados <- data.frame()
+
+
+
+for (i in 1:nrow(parametros)) {
+  set.seed(42)
+  modelo <- naiveBayes(
+    LogSalePrice ~ ., 
+    data = train_set, 
+    laplace = parametros$laplace[i], 
+    usekernel = parametros$usekernel[i], 
+    adjust = parametros$adjust[i]
+  )
+
+
+  predicciones <- predict(modelo, newdata = test_set)
+
+
+  if (!is.numeric(predicciones)) {
+    predicciones <- as.numeric(as.character(predicciones))
+  }
+
+
+  mse <- mean((test_set$LogSalePrice - predicciones)^2, na.rm = TRUE)
+  rmse <- sqrt(mse)
+  error_dolares <- exp(rmse)
+
+
+  resultados <- rbind(resultados, data.frame(
+    Laplace = parametros$laplace[i],
+    UseKernel = parametros$usekernel[i],
+    Adjust = parametros$adjust[i],
+    RMSE = rmse,
+    ErrorDolares = error_dolares
+  ))
+}
+
+
+resultados <- resultados[order(resultados$RMSE), ]
+print(resultados)
+
+
+mejor_modelo <- resultados[1, ]
+cat("Mejor modelo:\n")
+print(mejor_modelo)
+
+```
+
+#### Analisis de Modelo de Regresion
+
+Podemos ver que cambiando los hiperparametros como laplace, ajuste, y el uso del kernel no afecta realmente nada en mejorar el RMSE y en ErrorDolares, de hecho podemos ver que realmente es casi igual a lo que teniamos anteriormente, esto indica que nuestro modelo esta bien generalizado y realmente no podemos mejorar ningun hiperparametro, por lo ques se quedara con los mismos parametros definidos anteriormente. 
 
 ### 10.	Compare la eficiencia del algoritmo con el resultado obtenido con el árbol de decisión (el de clasificación) y el modelo de random forest que hizo en la hoja pasada. ¿Cuál es mejor para predecir? ¿Cuál se demoró más en procesar? 
 
+
 ```{r}
+# Cargar librería
+library(ggplot2)
+
+# Datos de clasificación
+clasificacion <- data.frame(
+  Modelo = c("Naive Bayes", "Random Forest", "Árbol de Clasificación"),
+  Accuracy = c(0.8041237, 0.9816934, 0.7414188)
+)
+
+# Gráfico de Accuracy (Clasificación)
+ggplot(clasificacion, aes(x = Modelo, y = Accuracy, fill = Modelo)) +
+  geom_bar(stat = "identity", color = "black", alpha = 0.8) +
+  labs(title = "Comparación de Accuracy en Modelos de Clasificación",
+       x = "Modelo",
+       y = "Accuracy") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Datos de regresión
+regresion <- data.frame(
+  Modelo = c("Naive Bayes", "Árbol de Regresión"),
+  MSE = c(0.05044311, 1658823049)
+)
+
+# Gráfico de MSE (Regresión)
+ggplot(regresion, aes(x = Modelo, y = MSE, fill = Modelo)) +
+  geom_bar(stat = "identity", color = "black", alpha = 0.8) +
+  labs(title = "Comparación de MSE en Modelos de Regresión",
+       x = "Modelo",
+       y = "MSE") +
+  theme_minimal() +
+  theme(legend.position = "none")
 
 ```
+
+#### Analisis de Modelos de Clasificacion 
+
+Se puede ver que el mejor de los modelos es random Forest siendo de 0.9816934 , de hecho es el mejor de todos los modelos hechos, pero cabe aclarar que realmente a pesar de ser muy buen acurrancy puede estar sobreajustado ya que si bien se probaron con los tests en las mismas condiciones, en lo personal seria mejor ir por Naive Bayes ya que es mas generalista y tiene un buen acurrancy de 0.80.
+
+Esto se debe a que Naive Bayes no usa todas las variables a diferencia de random forest, pero random forest y el arbol de clasificacion si ayuda a poder entender causualidad entre variables por lo que seria bueno en el analisis de este tipo y no en predicciones futuras.
+
+
+#### Analisis de Modelos de Regresion
+
+El mejor sin dudar alguna es Naive Bayes, de hecho el de regresion le fue bastante mal, en este caso si se usaria Naive Bayes, muy posiblemente a la naturaleza de los arboles de regresion y a su poca profundidad, afecto a la regresion de los datos. 
+
+Naive Bayes nos  es un modelo simple pero efectivo, especialmente cuando los datos tienen cierta independencia entre las variables. En este caso, el árbol de regresión tuvo un desempeño deficiente probablemente talvez  a que
+
+- Falta de profundidad: Si los árboles no son lo suficientemente profundos
+
+- Regresión en datos categóricos: Los árboles de regresión no siempre manejan bien datos categóricos sin una correcta transformación.
+
+- Datos atipicos: Debido a su poca profundidad no detecto bien los valores atipicos y no los supo clasificar
+
+
+
+
+
+### Conclusion
+
+En conclusion Naive Bayes si tuvo un buen desempeño, de hecho es el que es mas generalista de todos, superando incluso al arbol de regresion. 
+
+Naive Bayes si nos puede mostrar una buena prediccion de los datos  , pero no nos indica causualidad de los datos algo que los arboles de clasificacion si logran hacerlo. 
+
 
