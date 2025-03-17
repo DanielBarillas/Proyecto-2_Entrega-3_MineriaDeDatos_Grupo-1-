@@ -1322,6 +1322,9 @@ Se puede ver que el mejor de los modelos es random Forest siendo de 0.9816934 , 
 Esto se debe a que Naive Bayes no usa todas las variables a diferencia de random forest, pero random forest y el arbol de clasificacion si ayuda a poder entender causualidad entre variables por lo que seria bueno en el analisis de este tipo y no en predicciones futuras.
 
 
+De hehco el que mas se tardo mas en procesar fue el Random Forest debido a su profundidad de los datos y que se uso 100 arboles, y arbol de desicion fue el siguiente en tardarse pero naive bayes fue el mas rapido de todos
+
+
 #### Analisis de Modelos de Regresion
 
 El mejor sin dudar alguna es Naive Bayes, de hecho el de regresion le fue bastante mal, en este caso si se usaria Naive Bayes, muy posiblemente a la naturaleza de los arboles de regresion y a su poca profundidad, afecto a la regresion de los datos. 
@@ -1335,13 +1338,20 @@ Naive Bayes nos  es un modelo simple pero efectivo, especialmente cuando los dat
 - Datos atipicos: Debido a su poca profundidad no detecto bien los valores atipicos y no los supo clasificar
 
 
-
+De los 2 naive bayes se tardo menos que el de arbol de regresion esto hace que sea mas eficiente que el anterior.
 
 
 ### Conclusion
 
 En conclusion Naive Bayes si tuvo un buen desempeño, de hecho es el que es mas generalista de todos, superando incluso al arbol de regresion. 
 
-Naive Bayes si nos puede mostrar una buena prediccion de los datos  , pero no nos indica causualidad de los datos algo que los arboles de clasificacion si logran hacerlo. 
+Naive Bayes si nos puede mostrar una buena prediccion de los datos  , pero no nos indica causualidad de las variables algo que los arboles de clasificacion si logran hacerlo. 
+
+Y naive bayes mejoro mucho en eficiencia ya que se tarda mucho menos , esto debido a que no requiere entrenamiento complejo, solo calcula probabilidades condicionales para cada clase basándose en la frecuencia de las características.A diferencia de los otros que construyen arboles por cada iteracion.
+
+
+
+
+
 
 
